@@ -1,23 +1,22 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { getFirestore } from "firebase/firestore";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+
 const firebaseConfig = {
-  apiKey: "AIzaSyAWikTo7SQJO9Rj0vFAuMVhRUC6O7LvjUY",
-  authDomain: "huddleup-38d4d.firebaseapp.com",
-  projectId: "huddleup-38d4d",
-  storageBucket: "huddleup-38d4d.firebasestorage.app",
-  messagingSenderId: "199509230845",
-  appId: "1:199509230845:web:31741e49773e103156aa94",
-  measurementId: "G-7ZRVRM0DWC"
+  apiKey: "AIzaSyCxdiZwwKWEnpoVGPcjvfYtLM4qWGeE4ww",
+  authDomain: "huddleup-f534a.firebaseapp.com",
+  projectId: "huddleup-f534a",
+  storageBucket: "huddleup-f534a.firebasestorage.app",
+  messagingSenderId: "755172417433",
+  appId: "1:755172417433:web:ce0db9ec2f9a8f0c64fd08"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+const db = getFirestore(app);
+const auth = getAuth(app); // 👈 Add this
+const provider = new GoogleAuthProvider(); // 👈 And this
+
+export { db, auth, provider };
