@@ -6,6 +6,8 @@ import { doc, getDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 export default function GroupPage({ params }) {
+  const router = useRouter();
+
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -61,6 +63,13 @@ export default function GroupPage({ params }) {
           <button className="bg-[#4C6A92] text-white py-2 px-6 rounded-md hover:bg-[#36517B] transition">
             Manage Group
           </button>
+          <button
+            className="bg-[#1c1e20] text-white py-2 px-6 ml-4 rounded-md hover:bg-[#36517B] transition"
+            onClick={() => router.push('/')}
+          >
+            Back
+          </button>
+
         </div>
       </div>
     </div>
