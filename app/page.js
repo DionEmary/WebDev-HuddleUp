@@ -82,16 +82,16 @@ const Home = () => {
       setDateError("Please select both start and end dates.");
       return;
     }
-
+  
     const start = new Date(startDate);
     const end = new Date(endDate);
     const diffDays = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
-
+  
     if (diffDays > 7 || diffDays < 1) {
       setDateError("Date range must be between 1 and 7 days.");
       return;
     }
-
+  
     try {
       const docRef = await addDoc(collection(db, "groups"), {
         name: newGroupName.trim(),
@@ -100,7 +100,8 @@ const Home = () => {
         startDate,
         endDate,
       });
-
+  
+      // Add the group to the list without touching the responses subcollection
       setGroups((prev) => [
         ...prev,
         {
@@ -112,7 +113,7 @@ const Home = () => {
           endDate,
         },
       ]);
-
+  
       // Reset modal
       setNewGroupName("");
       setStartDate("");
@@ -123,6 +124,8 @@ const Home = () => {
       console.error("Error creating group:", err);
     }
   };
+  
+  
 
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
