@@ -1,147 +1,61 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { CalendarClock } from "lucide-react";
-import { db, auth, provider } from "./_utils/firebase";
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-  addDoc,
-} from "firebase/firestore";
-import {
-  signInWithPopup,
-  onAuthStateChanged,
-  signOut,
-} from "firebase/auth";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from 'react';
+import { signInWithGoogle, signOut, getCurrentUser } from './_utils/supabase-auth';
+import { useRouter } from 'next/navigation';
+import { CalendarClock } from 'lucide-react';
 
 const Home = () => {
   const router = useRouter();
 
   const [groups, setGroups] = useState([]);
-  const [user, setUser] = useState(null);
-
-  const [isCreating, setIsCreating] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isCreating, setIsCreating] = useState(false); 
   const [newGroupName, setNewGroupName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [dateError, setDateError] = useState("");
 
-  // Listen for auth changes
+  // Fetch user info on page load
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Fetch groups if logged in
-  useEffect(() => {
-    const fetchGroups = async () => {
-      if (!user) return;
-      try {
-        const groupQuery = query(
-          collection(db, "groups"),
-          where("members", "array-contains", user.uid)
-        );
-        const querySnapshot = await getDocs(groupQuery);
-        const groupList = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setGroups(groupList);
-      } catch (error) {
-        console.error("Error fetching groups:", error);
+    const fetchUser = async () => {
+      const user = await getCurrentUser();
+      if (!user) {
+        setCurrentUser(null); // Ensure the user is set to null if not logged in
+      } else {
+        setCurrentUser(user); // Set user state if logged in
       }
     };
 
-    fetchGroups();
-  }, [user]);
+    fetchUser();
+  }, []);
 
-  const handleGoogleSignIn = async () => {
+  const handleLogin = async () => {
     try {
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error("Google Sign-in Error:", error);
-    }
-  };
-
-  const handleSignOut = () => {
-    signOut(auth);
-  };
-
-  const handleGroupClick = (group) => {
-    router.push(`/group/${group.id}`);
-  };
-
-  const handleCreateGroup = async () => {
-    if (!newGroupName.trim()) return;
-    if (!startDate || !endDate) {
-      setDateError("Please select both start and end dates.");
-      return;
-    }
-  
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diffDays = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
-  
-    if (diffDays > 7 || diffDays < 1) {
-      setDateError("Date range must be between 1 and 7 days.");
-      return;
-    }
-  
-    try {
-      const docRef = await addDoc(collection(db, "groups"), {
-        name: newGroupName.trim(),
-        uuid: user.uid,
-        members: [user.uid],
-        startDate,
-        endDate,
-      });
-  
-      // Add the group to the list without touching the responses subcollection
-      setGroups((prev) => [
-        ...prev,
-        {
-          id: docRef.id,
-          name: newGroupName.trim(),
-          uuid: user.uid,
-          members: [user.uid],
-          startDate,
-          endDate,
-        },
-      ]);
-  
-      // Reset modal
-      setNewGroupName("");
-      setStartDate("");
-      setEndDate("");
-      setDateError("");
-      setIsCreating(false);
+      await signInWithGoogle(); // Attempt to sign in
+      router.push('/'); // Redirect to home page after login
     } catch (err) {
-      console.error("Error creating group:", err);
+      console.error('Login failed:', err);
     }
   };
-  
-  
 
-  const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    const date = new Date(dateString);
-    return date.toLocaleDateString(undefined, options);
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      setCurrentUser(null); // Set currentUser to null after logging out
+      router.push('/'); // Redirect to the home page after logout
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
   };
-  
-  
 
-  // Login screen if user not signed in
-  if (!user) {
+  // If no user is logged in, show the login page
+  if (!currentUser) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-[#0d1636] text-white">
         <h1 className="text-4xl font-bold mb-6">Welcome to HuddleUp</h1>
         <button
-          onClick={handleGoogleSignIn}
+          onClick={handleLogin}
           className="bg-white text-black px-6 py-2 rounded-md shadow hover:bg-gray-200 transition"
         >
           Sign in with Google
@@ -158,9 +72,10 @@ const Home = () => {
           <h1 className="text-2xl font-bold tracking-wide">HuddleUp</h1>
         </div>
         <div className="flex items-center gap-3 mr-4">
-          <p className="text-sm">{user.displayName}</p>
+          {/* Display name from currentUser */}
+          <p className="text-sm">{currentUser.user_metadata.full_name}</p>
           <button
-            onClick={handleSignOut}
+            onClick={handleLogout} // Use handleLogout
             className="bg-white text-black px-4 py-1.5 rounded-md hover:bg-gray-200"
           >
             Sign Out

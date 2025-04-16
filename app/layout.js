@@ -1,14 +1,14 @@
-import "./globals.css";
+import './globals.css'; // Your global styles
 
 export const metadata = {
-  title: "HuddleUp",
-  description: "A Website for scheduling and sorting out availability for any equation.",
+  title: 'HuddleUp',
+  description: 'Availability App',
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className="">
+      <body>
         {children}
       </body>
     </html>
