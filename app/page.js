@@ -4,13 +4,16 @@ import { useEffect, useState } from 'react';
 import { signInWithGoogle, signOut, getCurrentUser } from './_utils/supabase-auth';
 import { useRouter } from 'next/navigation';
 import { CalendarClock } from 'lucide-react';
+import { fetchUserGroups, handleCreateGroup } from './_utils/group_crud';
 
 const Home = () => {
   const router = useRouter();
 
   const [groups, setGroups] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+
   const [isCreating, setIsCreating] = useState(false); 
+
   const [newGroupName, setNewGroupName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -20,13 +23,15 @@ const Home = () => {
   useEffect(() => {
     const fetchUser = async () => {
       const user = await getCurrentUser();
-      if (!user) {
-        setCurrentUser(null); // Ensure the user is set to null if not logged in
+      if (user) {
+        setCurrentUser(user);
+        const groups = await fetchUserGroups(user.id);
+        setGroups(groups);
       } else {
-        setCurrentUser(user); // Set user state if logged in
+        setCurrentUser(null);
       }
     };
-
+  
     fetchUser();
   }, []);
 
@@ -47,6 +52,13 @@ const Home = () => {
     } catch (err) {
       console.error('Logout failed:', err);
     }
+  };
+
+  const formatDate = (dateString) => {
+    const [year, month, day] = dateString.split("-");
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `${months[+month - 1]} ${+day}, ${year}`;
   };
 
   // If no user is logged in, show the login page
@@ -103,7 +115,7 @@ const Home = () => {
             ) : (
               groups.map((group) => (
                 <div
-                  key={group.id}
+                  key={group.groupId}
                   className="bg-white p-4 rounded-lg shadow-md m-6 h-40 w-80 cursor-pointer hover:shadow-xl transition"
                   onClick={() => handleGroupClick(group)}
                 >
@@ -174,7 +186,7 @@ const Home = () => {
                 Cancel
               </button>
               <button
-                onClick={handleCreateGroup}
+                onClick={() => handleCreateGroup(newGroupName, startDate, endDate, currentUser, setGroups, setDateError, setIsCreating)}
                 className="bg-blue-600 text-white px-4 py-2 ml-4 rounded hover:bg-blue-700"
               >
                 Create

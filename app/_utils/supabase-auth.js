@@ -1,5 +1,5 @@
 // lib/auth.js
-import { supabase } from './supabase';
+import supabase from './supabase';
 
 // Sign in with Google
 export const signInWithGoogle = async () => {
