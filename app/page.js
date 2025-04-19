@@ -61,6 +61,10 @@ const Home = () => {
     return `${months[+month - 1]} ${+day}, ${year}`;
   };
 
+  const handleGroupClick = (group) => {
+    router.push(`/group/${group.groupId}`)
+  }
+
   // If no user is logged in, show the login page
   if (!currentUser) {
     return (

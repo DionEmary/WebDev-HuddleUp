@@ -93,3 +93,58 @@ export const handleCreateGroup = async (newGroupName, startDate, endDate, curren
     setDateError("Something went wrong. Try again.");
   }
 };
+
+export const fetchGroupDates = async (groupId) => {
+  const { data, error } = await supabase
+    .from("group_dates")
+    .select("dateID, date")
+    .eq("groupID", groupId)
+    .order("date", { ascending: true });
+
+  if (error) {
+    console.error("Failed to fetch dates:", error.message);
+    return [];
+  }
+
+  return data;
+};
+
+export const fetchGroupName = async (groupId) => {
+  const {data, error } = await supabase
+    .from("groups")
+    .select("name")
+    .eq("groupId", groupId)
+  
+  if (error) {
+    console.error("Failed to fetch Group Name: ", error.message);
+    return [];
+  }
+
+  const name = data[0].name;
+
+  return name;
+}
+
+export const submitAvailability = async (entries) => {
+  const { error } = await supabase.from("responses").insert(entries);
+  if (error) {
+    console.error("Error submitting availability:", error.message);
+    return false;
+  }
+
+  return true;
+};
+
+export const fetchAllResponses = async (groupId) => {
+  const { data, error } = await supabase
+    .from("responses")
+    .select("dateID, startTime, endTime, userID, group_dates(date)")
+    .eq("groupID", groupId);
+
+  if (error) {
+    console.error("Error fetching responses:", error);
+    return [];
+  }
+
+  return data;
+}
