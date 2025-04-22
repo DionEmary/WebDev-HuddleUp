@@ -139,7 +139,7 @@ const Home = () => {
     }
   
     try {
-      const groupData = await createGroupInSupabase(newGroupName, startDate, endDate, currentUser);
+      const groupData = await createGroup(newGroupName, startDate, endDate, currentUser);
       setGroups((prev) => [...prev, groupData]);
       resetForm();
     } catch (err) {
