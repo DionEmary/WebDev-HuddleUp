@@ -217,7 +217,7 @@ const Home = () => {
               invites.map((invite) => (
                 <div
                   key={invite.groupId}
-                  className="bg-[#3a3f4b] text-white p-4 rounded-lg shadow-md m-6 h-40 w-80"
+                  className="bg-[#4b5366] text-white p-4 rounded-lg shadow-md m-6 h-40 w-80"
                 >
                   <h2 className="text-xl font-semibold text-gray-200">
                     {invite.name}

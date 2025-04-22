@@ -157,8 +157,7 @@ export const addNewUser = async (uuid, displayName, username) => {
     .insert([{ uuid, display_name: displayName, username }]);
 
   if (error) {
-    console.log("Error Adding User: ", error);
-    throw error;
+    return null;
   }
 
   return data;
@@ -170,7 +169,6 @@ export const inviteUser = async (username, senderUser, groupID) => {
 
   // Check if the user exists
   if (!invitedUser) {
-    console.log("Error getting User");
     return false;
   }
 
@@ -380,7 +378,7 @@ export const removeGroup = async (groupID, uuid) => {
 
     return true;
   } else {
-    console.log("Error Removing Group, You are not the owner. Stop trying to break my code :(")
+    console.log("Error Removing Group, You are not the owner. Stop trying to break my code :(") // If you find this naturally please let me know so i can fix it.
   }
 }
 

@@ -57,7 +57,6 @@ const GroupPage = () => {
         setGroupName(groupName);
 
         const groupResponses = await fetchAllResponses(groupId);
-        console.log(groupResponses);
         setResponses(groupResponses);
 
         const isOwner = await checkOwner(groupId, user.id);
@@ -130,8 +129,6 @@ const GroupPage = () => {
   
     const success = await submitAvailability(entries);
     if (success) {
-      console.log("Availability submitted!");
-  
       // Re-fetch updated responses and best times
       const updatedResponses = await fetchAllResponses(groupId);
       setResponses(updatedResponses);
