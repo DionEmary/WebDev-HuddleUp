@@ -44,31 +44,34 @@ const Home = () => {
 
   // Fetch user info on page load
   useEffect(() => {
-    setLoading(true); // Extra Protection incase it is somehow false at page load
-
     const fetchUser = async () => {
-      const user = await getCurrentUser();
-      if (user) {
-        setCurrentUser(user);
-    
-        const existing = await checkUserExists(user.id);
-        if (!existing) {
-          setShowDisplayNamePrompt(true);
-        } else {
-          const groups = await fetchUserGroups(user.id);
-          setGroups(groups);
+      try {
+        const user = await getCurrentUser();
+        if (user) {
+          setCurrentUser(user);
+  
+          const existing = await checkUserExists(user.id);
+          if (!existing) {
+            setShowDisplayNamePrompt(true);
+          } else {
+            const groups = await fetchUserGroups(user.id);
+            setGroups(groups);
+          }
+  
+          const username = await getUsername(user.id);
+          setUsername(username);
+  
+          const invites = await fetchInvites(user.id);
+          setInvites(invites);
         }
-
-        const username = await getUsername(user.id);
-        setUsername(username);
-
-        const invites = await fetchInvites(user.id);
-        setInvites(invites);
+      } catch (err) {
+        console.error("Error fetching user info:", err);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
   
+    setLoading(true);
     fetchUser();
   }, []);
 
