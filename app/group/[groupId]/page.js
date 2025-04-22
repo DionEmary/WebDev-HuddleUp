@@ -332,13 +332,13 @@ const GroupPage = () => {
                   setError(null);
                   setIsModalOpen(false);
                 }}
-                className="bg-[#646a7e] text-white px-4 py-2 rounded hover:bg-[#494e5f]"
+                className="bg-[#444857] text-white px-4 py-2 rounded hover:bg-[#494e5f]"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
-                className="bg-[#35436e] text-white px-4 py-2 rounded hover:bg-[#404861]"
+                className="bg-[#35436e] text-white px-4 py-2 rounded hover:bg-blue-600"
               >
                 Submit
               </button>
@@ -376,7 +376,7 @@ const GroupPage = () => {
               </button>
               <button
                 onClick={() => handleInvite(inviteUsername)}
-                className="bg-[#2a3350] text-white px-4 py-2 rounded hover:bg-blue-600"
+                className="bg-[#35436e] text-white px-4 py-2 rounded hover:bg-blue-600"
               >
                 Invite
               </button>

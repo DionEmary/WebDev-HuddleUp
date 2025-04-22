@@ -6,10 +6,9 @@ import { useRouter } from 'next/navigation';
 import { CalendarClock } from 'lucide-react';
 import { 
   fetchUserGroups, 
-  handleCreateGroup,
+  createGroup,
   checkUserExists,
   addNewUser,
-  getDisplayName,
   fetchInvites,
   inviteResponce,
   getUsername
@@ -122,7 +121,32 @@ const Home = () => {
     }
   };
   
+  const handleCreateGroup = async () => {
+    setDateError("");
   
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+  
+    if (start > end) {
+      setDateError("Start date must be before end date.");
+      return;
+    }
+  
+    const dayDiff = (end - start) / (1000 * 60 * 60 * 24);
+    if (dayDiff > 6) {
+      setDateError("The date range cannot exceed 7 days.");
+      return;
+    }
+  
+    try {
+      const groupData = await createGroupInSupabase(newGroupName, startDate, endDate, currentUser);
+      setGroups((prev) => [...prev, groupData]);
+      resetForm();
+    } catch (err) {
+      console.error("Group creation error:", err);
+      setDateError("Something went wrong. Try again.");
+    }
+  };
 
   const formatDate = (dateString) => {
     const [year, month, day] = dateString.split("-");
@@ -307,13 +331,13 @@ const Home = () => {
                   setEndDate("");
                   setDateError("");
                 }}
-                className="text-white hover:underline"
+                className="bg-[#444857] text-white px-4 py-2 rounded hover:bg-[#494e5f]"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleCreateGroup(newGroupName, startDate, endDate, currentUser, setGroups, setDateError, setIsCreating)}
-                className="bg-blue-600 text-white px-4 py-2 ml-4 rounded hover:bg-blue-700"
+                className="bg-[#35436e] text-white px-4 py-2 ml-4 rounded hover:bg-blue-600"
               >
                 Create
               </button>

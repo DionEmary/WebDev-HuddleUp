@@ -216,64 +216,40 @@ export const inviteResponce = async (inviteID, uuid, groupID, response) => { // 
   return true;
 };
 
-export const handleCreateGroup = async (newGroupName, startDate, endDate, currentUser, setGroups, resetForm, setDateError) => {
-  setDateError("");
-
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-
-  if (start > end) {
-    setDateError("Start date must be before end date.");
-    return;
-  }
-
-  const dayDiff = (end - start) / (1000 * 60 * 60 * 24);
-  if (dayDiff > 6) {
-    setDateError("The date range cannot exceed 7 days.");
-    return;
-  }
-
-  try {
-    const { data: groupData, error: groupError } = await supabase
-      .from("groups")
-      .insert([
-        {
-          name: newGroupName,
-          uuid: currentUser.id,
-          startDate,
-          endDate,
-        },
-      ])
-      .select()
-      .single();
-
-    if (groupError || !groupData) {
-      console.error("Group creation failed:", groupError?.message);
-      setDateError("Something went wrong. Try again.");
-      return;
-    }
-
-    await supabase.from("group_members").insert([
+export const createGroup = async (newGroupName, startDate, endDate, currentUser) => {
+  const { data: groupData, error: groupError } = await supabase
+    .from("groups")
+    .insert([
       {
-        groupID: groupData.groupId,
-        userID: currentUser.id,
+        name: newGroupName,
+        uuid: currentUser.id,
+        startDate,
+        endDate,
       },
-    ]);
+    ])
+    .select()
+    .single();
 
-    const dateList = generateDateRange(startDate, endDate);
-    const groupDates = dateList.map((date) => ({
-      groupID: groupData.groupId,
-      date,
-    }));
-
-    await supabase.from("group_dates").insert(groupDates);
-
-    setGroups((prev) => [...prev, groupData]);
-    resetForm();
-  } catch (err) {
-    console.error("Group creation failed:", err);
-    setDateError("Something went wrong. Try again.");
+  if (groupError || !groupData) {
+    throw new Error("Group creation failed");
   }
+
+  await supabase.from("group_members").insert([
+    {
+      groupID: groupData.groupId,
+      userID: currentUser.id,
+    },
+  ]);
+
+  const dateList = generateDateRange(startDate, endDate);
+  const groupDates = dateList.map((date) => ({
+    groupID: groupData.groupId,
+    date,
+  }));
+
+  await supabase.from("group_dates").insert(groupDates);
+
+  return groupData;
 };
 
 // ========= Get/Check Data =========
