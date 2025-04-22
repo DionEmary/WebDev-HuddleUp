@@ -189,7 +189,7 @@ const Home = () => {
     <div className="flex flex-col h-screen">
       <header className="bg-[#00071E] text-gray-200 h-[8.33vh] px-4 drop-shadow-lg flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <CalendarClock size={36} className="cursor-pointer" />
+          <CalendarClock size={36} className="" />
           <h1 className="text-2xl font-bold tracking-wide">HuddleUp</h1>
         </div>
         <div className="flex items-center gap-3 mr-4">
