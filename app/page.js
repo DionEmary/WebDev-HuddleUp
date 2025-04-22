@@ -189,7 +189,7 @@ const Home = () => {
 
         <div className="bg-[#6b7080] w-5/6 overflow-y-auto">
           <h2 className="text-gray-200 mx-6 mt-6 text-2xl font-semibold">
-            {displayName + "'s Groups"}
+            {displayName}&apos;s Groups
           </h2>
           <div className="flex flex-wrap m-4">
             {groups.length === 0 ? (
