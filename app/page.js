@@ -144,6 +144,7 @@ const Home = () => {
       setNewGroupName("");
       setStartDate("");
       setEndDate("");
+      setIsCreating(false);
     } catch (err) {
       console.error("Group creation error:", err);
       setDateError("Something went wrong. Try again.");
