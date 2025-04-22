@@ -13,28 +13,34 @@ import {
   checkMembers,
   getUserFromName,
   removeGroup,
-} from "@/app/_utils/group_crud"
+} from "@/app/_utils/group_crud" // All this is used to get, modify and add data used by this page
 import findBestTimeSlots from '@/app/components/getBestTime'
 
 const GroupPage = () => {
+  // Basic Page Variables (Router to go home, params for the groupId and groupId to store it for supabase functions)
   const router = useRouter();
   const params = useParams();
   const groupId = params.groupId;
-  const [groupName, setGroupName] = useState(null);
-  const [user, setUser] = useState(null);
-  const [isOwner, setIsOwner] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [bestTimes, setBestTimes] = useState([]);
 
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [user, setUser] = useState(null); // Stores our user data (Mainly used to verify they are logged in and to get their UUID for data storage)
+
+  // Stores Page Data used to display data
+  const [groupName, setGroupName] = useState(null);
+  const [dates, setDates] = useState([]);
+  const [bestTimes, setBestTimes] = useState([]);
+  const [responses, setResponses] = useState([]);
+
+  // Page State Variables
+  const [isOwner, setIsOwner] = useState(false);
+  const [loading, setLoading] = useState(true); // When Data is loading this is true to show loading page
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false); // Modal used for Invites
+  const [isModalOpen, setIsModalOpen] = useState(false); // Modal used for availability
+
+  // Used to store data input in the modals for invites and availability, aswell as the errors if data is poorly formatted
+  const [availability, setAvailability] = useState({});
+  const [error, setError] = useState(null);
   const [inviteUsername, setInviteUsername] = useState("");
   const [inviteError, setInviteError] = useState(null);
-
-  const [dates, setDates] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [availability, setAvailability] = useState({});
-  const [responses, setResponses] = useState([]);
-  const [error, setError] = useState(null);
 
   // Fetch user + group dates
   useEffect(() => {
@@ -51,6 +57,7 @@ const GroupPage = () => {
         setGroupName(groupName);
 
         const groupResponses = await fetchAllResponses(groupId);
+        console.log(groupResponses);
         setResponses(groupResponses);
 
         const isOwner = await checkOwner(groupId, user.id);
@@ -124,6 +131,14 @@ const GroupPage = () => {
     const success = await submitAvailability(entries);
     if (success) {
       console.log("Availability submitted!");
+  
+      // Re-fetch updated responses and best times
+      const updatedResponses = await fetchAllResponses(groupId);
+      setResponses(updatedResponses);
+  
+      const updatedBestTimes = findBestTimeSlots(updatedResponses);
+      setBestTimes(updatedBestTimes);
+  
       setIsModalOpen(false);
     }
   };
@@ -152,6 +167,20 @@ const GroupPage = () => {
                     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     return `${months[+month - 1]} ${+day}, ${year}`;
   };
+
+  const formatTime = (timeString) => { // Formats time from 15:30:00 to 3:30PM as an example
+    if (!timeString) return "";
+  
+    const [hourStr, minuteStr] = timeString.split(":");
+    let hour = parseInt(hourStr, 10);
+    const minute = parseInt(minuteStr, 10);
+  
+    const ampm = hour >= 12 ? "PM" : "AM";
+    hour = hour % 12 || 12; // converts 0 to 12 for 12 AM
+  
+    return `${hour}:${minute.toString().padStart(2, "0")} ${ampm}`;
+  };
+  
 
   if (loading) {
     return (
@@ -189,7 +218,7 @@ const GroupPage = () => {
             onClick={() => setIsInviteModalOpen(true)}
             className="bg-[#2a3350] text-white px-4 py-2 rounded hover:bg-blue-600"
           >
-           Invite +
+           Invite Members
           </button>  
           <button
             onClick={() => router.push("/")}
@@ -231,7 +260,7 @@ const GroupPage = () => {
                   </div>
                 ) : (
                   <p className="text-sm italic text-red-300">
-                    No 1-hour overlap found for this date.
+                    No Good Availability This Day
                   </p>
                 )}
               </div>
@@ -239,13 +268,43 @@ const GroupPage = () => {
           </div>
         )}
         </section>
+        <section className="mt-10">
+        <h2 className="text-2xl font-semibold mb-4">User Responses</h2>
+        {responses.length === 0 ? (
+          <p>No responses submitted yet.</p>
+        ) : (
+          <div className="flex flex-wrap gap-4">
+            {responses.map((response) => (
+              <div
+                key={`${response.userID}-${response.dateID}`}
+                className="bg-[#4b5366] p-4 rounded-xl shadow-md w-full sm:w-[300px]"
+              >
+                <p className="font-semibold text-lg">
+                  {response.users?.display_name}
+                </p>
+                <p className="text-sm">
+                  📅{" "}
+                  {response.group_dates?.date
+                    ? formatDate(response.group_dates?.date)
+                    : "No date info"}
+                  <br />
+                  🕒{" "}
+                  {response.startTime && response.endTime
+                    ? `${formatTime(response.startTime)} – ${formatTime(response.endTime)}`
+                    : "No time selected"}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
       </main>
 
       {isModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-20 z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-96 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Set Your Availability</h2>
-            <p>Rounded to the nearest 30 Minute Interval, Leave Blank if unavailable</p>
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-[#3a3f4b] text-white p-6 rounded-xl shadow-md w-full sm:w-[400px] max-w-lg">
+            <h2 className="text-2xl font-semibold mb-4">Set Your Availability</h2>
+            <p className="text-sm mb-4">Rounded to the nearest 30 Minute Interval, Leave Blank if unavailable</p>
             {dates.map((d) => (
               <div key={d.dateID} className="mb-4">
                 <label className="block font-medium mb-1">{formatDate(d.date)}</label>
@@ -256,7 +315,7 @@ const GroupPage = () => {
                     onChange={(e) =>
                       handleTimeChange(d.dateID, "startTime", e.target.value)
                     }
-                    className="border px-2 py-1 rounded w-1/2"
+                    className="border border-gray-300 px-2 py-1 rounded w-1/2"
                   />
                   <input
                     type="time"
@@ -264,7 +323,7 @@ const GroupPage = () => {
                     onChange={(e) =>
                       handleTimeChange(d.dateID, "endTime", e.target.value)
                     }
-                    className="border px-2 py-1 rounded w-1/2"
+                    className="border border-gray-300 px-2 py-1 rounded w-1/2"
                   />
                 </div>
               </div>
@@ -273,16 +332,16 @@ const GroupPage = () => {
             <div className="flex justify-end mt-4 gap-2">
               <button
                 onClick={() => {
-                    setError(null);
-                    setIsModalOpen(false);
+                  setError(null);
+                  setIsModalOpen(false);
                 }}
-                className="text-gray-600 hover:underline"
+                className="bg-[#646a7e] text-white px-4 py-2 rounded hover:bg-[#494e5f]"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                className="bg-[#35436e] text-white px-4 py-2 rounded hover:bg-[#404861]"
               >
                 Submit
               </button>
@@ -293,34 +352,34 @@ const GroupPage = () => {
 
       {isInviteModalOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-            <h3 className="text-xl font-semibold mb-4">Invite a User</h3>
-      
+          <div className="bg-[#3a3f4b] text-white p-6 rounded-xl shadow-md w-full sm:w-[400px] max-w-lg">
+            <h3 className="text-2xl font-semibold mb-4">Invite a User</h3>
+
             <input
               type="text"
               value={inviteUsername}
               onChange={(e) => setInviteUsername(e.target.value)}
               placeholder="Enter Username"
-              className="w-full border border-gray-300 px-3 py-2 rounded mb-4"
+              className="w-full border border-gray-300 px-3 py-2 rounded mb-4 bg-[#444857]"
             />
-      
+
             {inviteError && (
               <p className="text-red-600 text-sm mb-3">{inviteError}</p>
             )}
-      
+
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => {
                   setIsInviteModalOpen(false);
                   setInviteUsername("");
                 }}
-                className="text-gray-600 hover:underline"
+                className="bg-[#444857] text-white px-4 py-2 rounded hover:bg-blue-600"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleInvite(inviteUsername)}
-                className="bg-blue-600 text-white px-4 py-2 ml-4 rounded hover:bg-blue-700"
+                className="bg-[#2a3350] text-white px-4 py-2 rounded hover:bg-blue-600"
               >
                 Create
               </button>

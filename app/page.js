@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { signInWithGoogle, signOut, getCurrentUser } from './_utils/supabase-auth';
+import { signInWithGoogle, signOut, getCurrentUser } from '@/app/_utils/supabase-auth';
 import { useRouter } from 'next/navigation';
 import { CalendarClock } from 'lucide-react';
 import { 
@@ -10,30 +10,36 @@ import {
   checkUserExists,
   addNewUser,
   getDisplayName,
-  getInvites,
+  fetchInvites,
   inviteResponce
-} from './_utils/group_crud';
+} from '@/app/_utils/group_crud'; // All this is used to get, modify and add data used by this page
 
 const Home = () => {
-  const router = useRouter();
+  const router = useRouter(); // Used to route to other pages
+
+  // Gets currentUser and display name for auth and displaying their name
   const [currentUser, setCurrentUser] = useState(null);
   const [displayName, setDisplayName] = useState("");
 
+  // Stores Groups and Invites to be displayed
   const [groups, setGroups] = useState([]);
-  const [showDisplayNamePrompt, setShowDisplayNamePrompt] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-
-  const [loading, setLoading] = useState(true);
-
   const [invites, setInvites] = useState([]);
 
-  const [displayNameInput, setDisplayNameInput] = useState("");
-  const [usernameInput, setusernameInput] = useState("");
-  const [usernameError, setUsernameError] = useState("");
+  // Used to store if user is creating group and all the data that is used during that, or errors that result of it
+  const [isCreating, setIsCreating] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [dateError, setDateError] = useState("");
+
+  // Used to let the user input their display name and user name. This is only used when they first log in if they dont already have these in the database
+  const [showDisplayNamePrompt, setShowDisplayNamePrompt] = useState(false);
+  const [displayNameInput, setDisplayNameInput] = useState("");
+  const [usernameInput, setusernameInput] = useState("");
+  const [usernameError, setUsernameError] = useState("");
+
+  // Used to show loading page when getting data to avoid issues with changing page mid data fetch
+  const [loading, setLoading] = useState(true);
 
   // Fetch user info on page load
   useEffect(() => {
@@ -55,7 +61,7 @@ const Home = () => {
         const name = await getDisplayName(user.id);
         setDisplayName(name);
 
-        const invites = await getInvites(user.id);
+        const invites = await fetchInvites(user.id);
         setInvites(invites);
       }
 
@@ -188,7 +194,7 @@ const Home = () => {
               groups.map((group) => (
                 <div
                   key={group.groupId}
-                  className="bg-[#3a3f4b] text-white p-4 rounded-lg shadow-md m-6 h-40 w-80 cursor-pointer hover:shadow-xl transition"
+                  className="bg-[#4b5366] text-white p-4 rounded-lg shadow-md m-6 h-40 w-80 cursor-pointer hover:shadow-xl transition"
                   onClick={() => handleGroupClick(group)}
                 >
                   <h2 className="text-xl font-semibold text-gray-200">
@@ -220,7 +226,7 @@ const Home = () => {
                     <button
                       onClick={async () => {
                         await inviteResponce(invite.invites[0].inviteID, currentUser.id, invite.groupId, true);
-                        const updatedInvites = await getInvites(currentUser.id);
+                        const updatedInvites = await fetchInvites(currentUser.id);
                         setInvites(updatedInvites);
                         const updatedGroups = await fetchUserGroups(currentUser.id);
                         setGroups(updatedGroups);
@@ -232,7 +238,7 @@ const Home = () => {
                     <button
                       onClick={async () => {
                         await inviteResponce(invite.invites[0].inviteID, currentUser.id, invite.groupId, false);
-                        const updatedInvites = await getInvites(currentUser.id);
+                        const updatedInvites = await fetchInvites(currentUser.id);
                         setInvites(updatedInvites);
                         const updatedGroups = await fetchUserGroups(currentUser.id);
                         setGroups(updatedGroups);
@@ -251,10 +257,10 @@ const Home = () => {
 
       {isCreating && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+          <div className="bg-[#3a3f4b] text-white p-6 rounded-lg shadow-lg w-96">
             <h3 className="text-xl font-semibold mb-4">Create a Group</h3>
 
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-white">
               Group Name
             </label>
             <input
@@ -262,10 +268,10 @@ const Home = () => {
               value={newGroupName}
               onChange={(e) => setNewGroupName(e.target.value)}
               placeholder="Enter group name"
-              className="w-full border border-gray-300 px-3 py-2 rounded mb-4"
+              className="w-full border border-gray-300 px-3 py-2 rounded mb-4 bg-[#3a3f4b]"
             />
 
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-white">
               Start Date
             </label>
             <input
@@ -275,7 +281,7 @@ const Home = () => {
               className="w-full border border-gray-300 px-3 py-2 rounded mb-4"
             />
 
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-white">
               End Date
             </label>
             <input
@@ -298,7 +304,7 @@ const Home = () => {
                   setEndDate("");
                   setDateError("");
                 }}
-                className="text-gray-600 hover:underline"
+                className="text-white hover:underline"
               >
                 Cancel
               </button>
