@@ -246,7 +246,7 @@ const GroupPage = () => {
                 {slot ? (
                   <div className="text-sm">
                     <p>
-                      🕒 <strong>Time:</strong> {slot.startTime} – {slot.endTime}
+                      🕒 <strong>Time:</strong> {formatTime(slot.startTime)} – {formatTime(slot.endTime)}
                     </p>
                     <p>
                       👥 <strong>Overlap:</strong>{" "}
