@@ -99,7 +99,6 @@ const timeToMinutes = (t) => {
         results[date] = {
           startTime: minutesToTime(bestBlock.start),
           endTime: minutesToTime(bestBlock.end),
-          approxUsers: bestBlock.users,
           overlapType: "most"
         };
       } else {

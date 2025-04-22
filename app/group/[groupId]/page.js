@@ -252,7 +252,7 @@ const GroupPage = () => {
                       👥 <strong>Overlap:</strong>{" "}
                       {slot.overlapType === "everyone"
                         ? "Everyone is available"
-                        : `Most people are available (${slot.approxUsers})`}
+                        : `Most people are available`}
                     </p>
                   </div>
                 ) : (
@@ -378,7 +378,7 @@ const GroupPage = () => {
                 onClick={() => handleInvite(inviteUsername)}
                 className="bg-[#2a3350] text-white px-4 py-2 rounded hover:bg-blue-600"
               >
-                Create
+                Invite
               </button>
             </div>
           </div>
