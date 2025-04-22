@@ -138,7 +138,7 @@ export const submitAvailability = async (entries) => {
 export const fetchAllResponses = async (groupId) => {
   const { data, error } = await supabase
     .from("responses")
-    .select("dateID, startTime, endTime, userID, group_dates(date)")
+    .select("dateID, startTime, endTime, userID, group_dates(date), users(display_name)")
     .eq("groupID", groupId);
 
   if (error) {
@@ -147,4 +147,224 @@ export const fetchAllResponses = async (groupId) => {
   }
 
   return data;
+}
+
+export const checkUserExists = async (uuid) => {
+  const { data, error } = await supabase
+    .from('users')
+    .select('display_name')
+    .eq('uuid', uuid);
+
+  if (error) {
+    console.error('Error checking user:', error);
+    return false;
+  }
+
+  return data.length > 0; // returns null if not found
+};
+
+export const addNewUser = async (uuid, displayName, username) => {
+  // Check if username already exists
+  const { data: existingUser, error: checkError } = await supabase
+    .from('users')
+    .select('username')
+    .eq('username', username)
+    .maybeSingle();
+
+  if (checkError) {
+    console.error("Error checking username:", checkError);
+    throw checkError;
+  }
+
+  if (existingUser) {
+    // Custom error for existing username
+    throw new Error("Username already exists");
+  }
+
+  // Insert new user
+  const { data, error } = await supabase
+    .from('users')
+    .insert([{ uuid, display_name: displayName, username }]);
+
+  if (error) {
+    console.log("Error Adding User: ", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const getUserFromName = async (username) => {
+  const { data, error } = await supabase
+    .from("users")
+    .select("uuid")
+    .eq("username", username)
+    .single();
+
+    if (error) {
+      return null;
+    }
+
+    return data.uuid;
+};
+
+export const getDisplayName = async (uuid) => {
+  const { data, error } = await supabase
+    .from("users")
+    .select("display_name")
+    .eq("uuid", uuid)
+    .single();
+
+    if(error) {
+      console.error("Error getting Display Name: ", error);
+    }
+
+    return data.display_name;
+}
+
+export const inviteUser = async (username, senderUser, groupID) => {
+  // Get user object from the username
+  const invitedUser = await getUserFromName(username);
+
+  // Check if the user exists
+  if (!invitedUser) {
+    console.log("Error getting User");
+    return false;
+  }
+
+  // Insert the invite into the invites table
+  const { data, error } = await supabase
+    .from("invites")
+    .insert([
+      {
+        invitedUser: invitedUser,
+        senderUser: senderUser,
+        groupID: groupID,
+      },
+    ]);
+
+  if (error) {
+    console.error("Error inserting invite:", error);
+    return false;
+  }
+
+  return true;
+};
+
+export const getInvites = async (uuid) => {
+  const { data, error } = await supabase
+    .from("groups")
+    .select(`
+      name,
+      groupId,
+      invites!inner(
+        invitedUser,
+        inviteID
+      )
+    `)
+    .eq('invites.invitedUser', uuid);
+
+  if (error) {
+    console.error(error);
+    return [];
+  }
+
+  return data;
+};
+
+export const removeMember = async (uuid) => {
+  const { data, error } = await supabase 
+    .from("group_members")
+    .delete()
+    .eq("userID", uuid);
+
+    if(error) {
+      console.error('Error Removing Member: ', error.message)
+    }
+};
+
+// Check group owner (used for deleting and editing)
+export const checkOwner = async (groupID, uuid) => {
+  const { data, error } = await supabase // Gets Group ID's related to passed in UUID. Used later to check if any match the groupID passed in
+    .from("groups")
+    .select("uuid")
+    .eq("groupId", groupID)
+    .single();
+
+    if(error) {
+      console.error("Error Checking Owner: ", error.message)
+      return false;
+    }
+
+    if(uuid == data.uuid){
+      return true;
+    } else {
+      return false;
+    }
+}
+
+// Completely Deletes a Group. (Only Owner can do)
+export const removeGroup = async (groupID, uuid) => {
+  const check = checkOwner(groupID, uuid); // Checks if the user passed in owns the group passed in
+  if(check){ // If they own the group we remove the group
+    const { data, error } = await supabase
+      .from("groups")
+      .delete()
+      .eq("groupId", groupID);
+
+    if(error){
+      console.error("Error Removing Group: ", error.message);
+      return false;
+    }
+
+    return true;
+  } else {
+    console.log("Error Removing Group, You are not the owner. Stop trying to break my code :(")
+  }
+}
+
+export const inviteResponce = async (inviteID, uuid, groupID, response) => {
+  if (response) {
+    const { error } = await supabase
+      .from("group_members")
+      .insert([{ groupID, userID: uuid }]);
+
+    if (error) {
+      console.error("Error adding user to group_members:", error);
+      return false;
+    }
+  }
+
+  const { deleteError } = await supabase
+    .from("invites")
+    .delete()
+    .eq("inviteID", inviteID);
+
+  if (deleteError) {
+    console.error("Error deleting invite:", deleteError);
+    return false;
+  }
+
+  return true;
+};
+
+export const checkMembers = async (uuid, groupID) => { // Checks if the user is in the group
+
+  const { data, error } = await supabase
+    .from("group_members")
+    .select("*")
+    .eq("userID", uuid)
+    .eq("groupID", groupID)
+    .single();
+    
+    if (error && error.code !== "PGRST116") { // PGRST116 = no rows returned (which is fine)
+      console.error("Error checking group membership:", error);
+      return false;
+    }
+
+    if(data == null) { // If the member isnt in the group return false
+      return false
+    }
+
+    return true; // Return true if data isnt null
 }

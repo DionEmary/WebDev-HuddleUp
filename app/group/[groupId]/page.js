@@ -3,16 +3,34 @@
 import React, { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { getCurrentUser } from "@/app/_utils/supabase-auth";
-import { fetchGroupDates, submitAvailability, fetchGroupName, fetchAllResponses } from "@/app/_utils/group_crud"
+import { 
+  fetchGroupDates, 
+  submitAvailability, 
+  fetchGroupName, 
+  fetchAllResponses, 
+  inviteUser,
+  checkOwner,
+  checkMembers,
+  getUserFromName,
+  removeGroup,
+} from "@/app/_utils/group_crud"
+import findBestTimeSlots from '@/app/components/getBestTime'
 
 const GroupPage = () => {
   const router = useRouter();
   const params = useParams();
   const groupId = params.groupId;
   const [groupName, setGroupName] = useState(null);
+  const [user, setUser] = useState(null);
+  const [isOwner, setIsOwner] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [bestTimes, setBestTimes] = useState([]);
+
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [inviteUsername, setInviteUsername] = useState("");
+  const [inviteError, setInviteError] = useState(null);
 
   const [dates, setDates] = useState([]);
-  const [user, setUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [availability, setAvailability] = useState({});
   const [responses, setResponses] = useState([]);
@@ -20,6 +38,7 @@ const GroupPage = () => {
 
   // Fetch user + group dates
   useEffect(() => {
+    setLoading(true);
     const fetchData = async () => {
         const user = await getCurrentUser();
         if (!user) return;
@@ -33,6 +52,14 @@ const GroupPage = () => {
 
         const groupResponses = await fetchAllResponses(groupId);
         setResponses(groupResponses);
+
+        const isOwner = await checkOwner(groupId, user.id);
+        setIsOwner(isOwner);
+
+        const bestTimes = findBestTimeSlots(groupResponses);
+        setBestTimes(bestTimes);
+
+        setLoading(false);
     };
   
     fetchData();
@@ -61,37 +88,38 @@ const GroupPage = () => {
       },
     }));
   };
-  
 
   const handleSubmit = async () => {
     if (!user) return;
-  
-    // Reset any existing error
     setError(null);
   
-    // Check for incomplete time entries or invalid time range
+    // Validate times
     for (const [dateID, times] of Object.entries(availability)) {
-      if ((times.startTime && !times.endTime) || (!times.startTime && times.endTime)) {
-        setError("Both start time and end time must be filled out for each date.");
+      const hasStart = !!times.startTime;
+      const hasEnd = !!times.endTime;
+  
+      if ((hasStart && !hasEnd) || (!hasStart && hasEnd)) {
+        setError("Both start time and end time must be filled out for each date, or leave both blank.");
         return;
       }
   
-      if (times.startTime && times.endTime && times.endTime < times.startTime) {
+      if (hasStart && hasEnd && times.endTime < times.startTime) {
         setError("End time cannot be before start time.");
         return;
       }
     }
   
-    // Takes the availability array and formats it to be inserted into responses
-    const entries = Object.entries(availability)
-      .filter(([_, v]) => v.startTime && v.endTime)
-      .map(([dateID, times]) => ({
+    // Format all dates (even ones left blank) into entries
+    const entries = dates.map((d) => {
+      const times = availability[d.dateID] || {};
+      return {
         groupID: groupId,
-        dateID: parseInt(dateID),
+        dateID: d.dateID,
         userID: user.id,
-        startTime: times.startTime,
-        endTime: times.endTime,
-      }));
+        startTime: times.startTime || null,
+        endTime: times.endTime || null,
+      };
+    });
   
     const success = await submitAvailability(entries);
     if (success) {
@@ -100,6 +128,24 @@ const GroupPage = () => {
     }
   };
 
+  const handleInvite = async (invitedUser) => {
+    if (!user) return; // Prevents issues with errors
+    const uuid = await getUserFromName(invitedUser);
+    const check = await checkMembers(uuid, groupId);  
+    
+    if(!check){
+      const inviteBool = await inviteUser(invitedUser, user.id, groupId);
+
+      if(inviteBool){
+        setIsInviteModalOpen(false);
+      } else {
+        setInviteError("Invalid Username");
+      }
+    } else {
+      setInviteError("User already in group")
+    }
+  }
+
   const formatDate = (dateString) => {
     const [year, month, day] = dateString.split("-");
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -107,46 +153,92 @@ const GroupPage = () => {
     return `${months[+month - 1]} ${+day}, ${year}`;
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
+        <p className="text-xl">Loading...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col h-screen">
-      <header className="bg-[#00071E] text-gray-200 h-[8.33vh] px-4 drop-shadow-lg flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{groupName}</h1>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          Input Availability
-        </button>
+    <div className="flex flex-col min-h-screen">
+      <header className="fixed top-0 left-0 right-0 bg-[#00071E] text-gray-200 h-[70px] px-4 drop-shadow-lg flex items-center justify-between z-50">
+        <div className="flex justify-between">
+          <h1 className="text-2xl font-bold">{groupName}</h1>
+          {isOwner && ( // Only Shows if user is the owner (Code again checks if user is owner just to make sure and to prevent errors)
+            <button
+              onClick={() => {
+                removeGroup(groupId, user.id);
+                router.push('/');
+              }}
+              className="bg-[#2a3350] text-white px-4 py-2 ml-10 rounded hover:bg-blue-600"
+            >
+              Delete Group
+            </button> 
+          )}
+        </div>
+        <div className="flex justify-between w-full sm:w-5/6 md:w-1/2 lg:w-4/10 xl:w-3/10" >
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-[#2a3350] text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Input Availability
+          </button>  
+          <button
+            onClick={() => setIsInviteModalOpen(true)}
+            className="bg-[#2a3350] text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+           Invite +
+          </button>  
+          <button
+            onClick={() => router.push("/")}
+            className="bg-[#2a3350] text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Back to Home
+          </button>          
+        </div>
+
       </header>
 
-      <main className="bg-[#6b7080] flex-1 p-6 text-white">
-        <p className="text-lg mb-4">Available Dates:</p>
-        <ul className="list-disc pl-6">
-          {dates.map((d) => (
-            <li
-              key={d.dateID}
-              className=" text-white"
-            >
-              {formatDate(d.date)}
-            </li>
-          ))}
-        </ul>
-
-        <p className="text-lg mt-8 mb-2">Submitted Responses:</p>
-        {responses.length === 0 ? (
-        <p>No responses yet.</p>
+      <main className="bg-[#6b7080] flex-1 p-6 text-white mt-[70px]">
+        <section>
+        <h2 className="text-2xl font-semibold mb-4">Best Time Slots by Date</h2>
+        {Object.keys(bestTimes).length === 0 ? (
+          <p>No responses yet.</p>
         ) : (
-        <ul className="list-disc pl-6">
-            {responses.map((r, index) => (
-            <li key={index} className="mb-2">
-                <strong>User:</strong> {r.userID}<br />
-                <strong>Date:</strong> {r.group_dates?.date ? formatDate(r.group_dates.date) : "No date found"}<br />
-                <strong>Start:</strong> {r.startTime}<br />
-                <strong>End:</strong> {r.endTime}
-            </li>
+          <div className="space-y-4">
+            {Object.entries(bestTimes).map(([date, slot], index) => (
+              <div
+                key={index}
+                className="bg-[#3a3f4b] text-white p-4 rounded-xl shadow-md"
+              >
+                <p className="text-lg font-semibold mb-1">
+                  📅 {formatDate(date)}
+                </p>
+
+                {slot ? (
+                  <div className="text-sm">
+                    <p>
+                      🕒 <strong>Time:</strong> {slot.startTime} – {slot.endTime}
+                    </p>
+                    <p>
+                      👥 <strong>Overlap:</strong>{" "}
+                      {slot.overlapType === "everyone"
+                        ? "Everyone is available"
+                        : `Most people are available (${slot.approxUsers})`}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm italic text-red-300">
+                    No 1-hour overlap found for this date.
+                  </p>
+                )}
+              </div>
             ))}
-        </ul>
+          </div>
         )}
+        </section>
       </main>
 
       {isModalOpen && (
@@ -193,6 +285,44 @@ const GroupPage = () => {
                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
               >
                 Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isInviteModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+            <h3 className="text-xl font-semibold mb-4">Invite a User</h3>
+      
+            <input
+              type="text"
+              value={inviteUsername}
+              onChange={(e) => setInviteUsername(e.target.value)}
+              placeholder="Enter Username"
+              className="w-full border border-gray-300 px-3 py-2 rounded mb-4"
+            />
+      
+            {inviteError && (
+              <p className="text-red-600 text-sm mb-3">{inviteError}</p>
+            )}
+      
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setIsInviteModalOpen(false);
+                  setInviteUsername("");
+                }}
+                className="text-gray-600 hover:underline"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleInvite(inviteUsername)}
+                className="bg-blue-600 text-white px-4 py-2 ml-4 rounded hover:bg-blue-700"
+              >
+                Create
               </button>
             </div>
           </div>

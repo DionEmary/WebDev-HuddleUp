@@ -4,16 +4,32 @@ import { useEffect, useState } from 'react';
 import { signInWithGoogle, signOut, getCurrentUser } from './_utils/supabase-auth';
 import { useRouter } from 'next/navigation';
 import { CalendarClock } from 'lucide-react';
-import { fetchUserGroups, handleCreateGroup } from './_utils/group_crud';
+import { 
+  fetchUserGroups, 
+  handleCreateGroup,
+  checkUserExists,
+  addNewUser,
+  getDisplayName,
+  getInvites,
+  inviteResponce
+} from './_utils/group_crud';
 
 const Home = () => {
   const router = useRouter();
+  const [currentUser, setCurrentUser] = useState(null);
+  const [displayName, setDisplayName] = useState("");
 
   const [groups, setGroups] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [showDisplayNamePrompt, setShowDisplayNamePrompt] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
 
-  const [isCreating, setIsCreating] = useState(false); 
+  const [loading, setLoading] = useState(true);
 
+  const [invites, setInvites] = useState([]);
+
+  const [displayNameInput, setDisplayNameInput] = useState("");
+  const [usernameInput, setusernameInput] = useState("");
+  const [usernameError, setUsernameError] = useState("");
   const [newGroupName, setNewGroupName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -21,15 +37,29 @@ const Home = () => {
 
   // Fetch user info on page load
   useEffect(() => {
+    setLoading(true); // Extra Protection incase it is somehow false at page load
+
     const fetchUser = async () => {
       const user = await getCurrentUser();
       if (user) {
         setCurrentUser(user);
-        const groups = await fetchUserGroups(user.id);
-        setGroups(groups);
-      } else {
-        setCurrentUser(null);
+    
+        const existing = await checkUserExists(user.id);
+        if (!existing) {
+          setShowDisplayNamePrompt(true);
+        } else {
+          const groups = await fetchUserGroups(user.id);
+          setGroups(groups);
+        }
+
+        const name = await getDisplayName(user.id);
+        setDisplayName(name);
+
+        const invites = await getInvites(user.id);
+        setInvites(invites);
       }
+
+      setLoading(false);
     };
   
     fetchUser();
@@ -54,6 +84,36 @@ const Home = () => {
     }
   };
 
+  const handleUserSubmit = async () => {
+    if (!displayNameInput.trim()) {
+      setUsernameError("Display Name Cant Be Empty");
+      return;
+    }
+
+    if(usernameInput.trim() < 6) {
+      setUsernameError("Username Must be 6 Characters or Longer")
+      return;
+    }
+  
+    try {
+      setUsernameError("");
+      await addNewUser(currentUser.id, displayNameInput.trim(), usernameInput.trim());
+      setShowDisplayNamePrompt(false);
+  
+      const groups = await fetchUserGroups(currentUser.id);
+      setGroups(groups);
+    } catch (err) {
+      if (err.message === "Username already exists") {
+        setUsernameError("That username is already taken.");
+      } else {
+        console.error("Error creating user:", err);
+        setUsernameError("Something went wrong. Please try again.");
+      }
+    }
+  };
+  
+  
+
   const formatDate = (dateString) => {
     const [year, month, day] = dateString.split("-");
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -63,6 +123,14 @@ const Home = () => {
 
   const handleGroupClick = (group) => {
     router.push(`/group/${group.groupId}`)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
+        <p className="text-xl">Loading...</p>
+      </div>
+    );
   }
 
   // If no user is logged in, show the login page
@@ -89,7 +157,7 @@ const Home = () => {
         </div>
         <div className="flex items-center gap-3 mr-4">
           {/* Display name from currentUser */}
-          <p className="text-sm">{currentUser.user_metadata.full_name}</p>
+          <p className="text-sm">{displayName}</p>
           <button
             onClick={handleLogout} // Use handleLogout
             className="bg-white text-black px-4 py-1.5 rounded-md hover:bg-gray-200"
@@ -120,15 +188,60 @@ const Home = () => {
               groups.map((group) => (
                 <div
                   key={group.groupId}
-                  className="bg-white p-4 rounded-lg shadow-md m-6 h-40 w-80 cursor-pointer hover:shadow-xl transition"
+                  className="bg-[#3a3f4b] text-white p-4 rounded-lg shadow-md m-6 h-40 w-80 cursor-pointer hover:shadow-xl transition"
                   onClick={() => handleGroupClick(group)}
                 >
-                  <h2 className="text-xl font-semibold text-[#00071E]">
+                  <h2 className="text-xl font-semibold text-gray-200">
                     {group.name}
                   </h2>
-                  <p className="text-sm text-gray-600 mt-2">
+                  <p className="text-sm text-gray-200 mt-2">
                     {formatDate(group.startDate)} → {formatDate(group.endDate)}
                   </p>
+                </div>
+              ))
+            )}
+          </div>
+          <h2 className="text-gray-200 mx-6 mt-10 text-2xl font-semibold">
+            Your Invites
+          </h2>
+          <div className="flex flex-wrap m-4">
+            {invites.length === 0 ? (
+              <p className="text-white m-6">No Invites.</p>
+            ) : (
+              invites.map((invite) => (
+                <div
+                  key={invite.groupId}
+                  className="bg-[#3a3f4b] text-white p-4 rounded-lg shadow-md m-6 h-40 w-80"
+                >
+                  <h2 className="text-xl font-semibold text-gray-200">
+                    {invite.name}
+                  </h2>
+                  <div className="flex mt-5">
+                    <button
+                      onClick={async () => {
+                        await inviteResponce(invite.invites[0].inviteID, currentUser.id, invite.groupId, true);
+                        const updatedInvites = await getInvites(currentUser.id);
+                        setInvites(updatedInvites);
+                        const updatedGroups = await fetchUserGroups(currentUser.id);
+                        setGroups(updatedGroups);
+                      }}
+                      className="bg-green-600 text-white px-4 py-2 m-2 rounded-md hover:bg-green-700 w-full"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await inviteResponce(invite.invites[0].inviteID, currentUser.id, invite.groupId, false);
+                        const updatedInvites = await getInvites(currentUser.id);
+                        setInvites(updatedInvites);
+                        const updatedGroups = await fetchUserGroups(currentUser.id);
+                        setGroups(updatedGroups);
+                      }}
+                      className="bg-red-600 text-white px-4 py-2 m-2 rounded-md hover:bg-red-800 w-full"
+                    >
+                      Decline
+                    </button>
+                  </div>
                 </div>
               ))
             )}
@@ -196,6 +309,44 @@ const Home = () => {
                 Create
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {showDisplayNamePrompt && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-md shadow-md w-96">
+            <h2 className="text-lg font-semibold mb-4">Choose a User Name and Display Name</h2>
+            <label className="block text-sm font-medium text-gray-700">
+              Display Name
+            </label>
+            <input
+              type="text"
+              value={displayNameInput}
+              onChange={(e) => setDisplayNameInput(e.target.value)}
+              placeholder="Enter display name"
+              className="w-full border border-gray-300 px-3 py-2 rounded mb-4"
+            />
+            <label className="block text-sm font-medium text-gray-700">
+              Username: (Must be Unique)
+            </label>
+            <input
+              type="text"
+              value={usernameInput}
+              onChange={(e) => setusernameInput(e.target.value)}
+              placeholder="Enter username"
+              className="w-full border border-gray-300 px-3 py-2 rounded mb-4"
+            />
+
+            {usernameError && (
+              <p className="text-red-600 text-sm mb-3">{usernameError}</p>
+            )}
+
+            <button
+              onClick={handleUserSubmit}
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full"
+            >
+              Save and Continue
+            </button>
           </div>
         </div>
       )}
