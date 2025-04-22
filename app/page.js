@@ -11,7 +11,8 @@ import {
   addNewUser,
   getDisplayName,
   fetchInvites,
-  inviteResponce
+  inviteResponce,
+  getUsername
 } from '@/app/_utils/group_crud'; // All this is used to get, modify and add data used by this page
 
 const Home = () => {
@@ -20,6 +21,7 @@ const Home = () => {
   // Gets currentUser and display name for auth and displaying their name
   const [currentUser, setCurrentUser] = useState(null);
   const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
 
   // Stores Groups and Invites to be displayed
   const [groups, setGroups] = useState([]);
@@ -58,8 +60,11 @@ const Home = () => {
           setGroups(groups);
         }
 
-        const name = await getDisplayName(user.id);
-        setDisplayName(name);
+        const display_name = await getDisplayName(user.id);
+        setDisplayName(dispaly_name);
+
+        const username = await getUsername(user.id);
+        setUsername(username);
 
         const invites = await fetchInvites(user.id);
         setInvites(invites);
@@ -162,8 +167,7 @@ const Home = () => {
           <h1 className="text-2xl font-bold tracking-wide">HuddleUp</h1>
         </div>
         <div className="flex items-center gap-3 mr-4">
-          {/* Display name from currentUser */}
-          <p className="text-sm">{displayName}</p>
+          <p className="text-sm">{username}</p>
           <button
             onClick={handleLogout} // Use handleLogout
             className="bg-white text-black px-4 py-1.5 rounded-md hover:bg-gray-200"
@@ -185,7 +189,7 @@ const Home = () => {
 
         <div className="bg-[#6b7080] w-5/6 overflow-y-auto">
           <h2 className="text-gray-200 mx-6 mt-6 text-2xl font-semibold">
-            Your Groups
+            {displayName + "'s Groups"}
           </h2>
           <div className="flex flex-wrap m-4">
             {groups.length === 0 ? (

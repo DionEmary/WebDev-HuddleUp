@@ -319,6 +319,20 @@ export const getDisplayName = async (uuid) => {
     return data.display_name;
 }
 
+export const getUsername = async (uuid) => {
+  const { data, error } = await supabase
+    .from("users")
+    .select("username")
+    .eq("uuid", uuid)
+    .single();
+
+    if(error) {
+      console.error("Error getting Username: ", error);
+    }
+
+    return data.username;
+}
+
 // Check group owner (used for deleting and editing)
 export const checkOwner = async (groupID, uuid) => {
   const { data, error } = await supabase // Gets Group ID's related to passed in UUID. Used later to check if any match the groupID passed in
