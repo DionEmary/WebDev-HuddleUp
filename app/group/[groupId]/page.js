@@ -308,6 +308,7 @@ const GroupPage = () => {
                 <div className="flex gap-2">
                   <input
                     type="time"
+                    step="1800"
                     value={availability[d.dateID]?.startTime || ""}
                     onChange={(e) =>
                       handleTimeChange(d.dateID, "startTime", e.target.value)
@@ -316,6 +317,7 @@ const GroupPage = () => {
                   />
                   <input
                     type="time"
+                    step="1800"
                     value={availability[d.dateID]?.endTime || ""}
                     onChange={(e) =>
                       handleTimeChange(d.dateID, "endTime", e.target.value)

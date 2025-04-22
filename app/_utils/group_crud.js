@@ -231,7 +231,8 @@ export const createGroup = async (newGroupName, startDate, endDate, currentUser)
     .single();
 
   if (groupError || !groupData) {
-    throw new Error("Group creation failed");
+    console.error("Group creation failed", groupError);
+    return;
   }
 
   await supabase.from("group_members").insert([
