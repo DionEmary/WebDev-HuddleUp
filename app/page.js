@@ -141,7 +141,9 @@ const Home = () => {
     try {
       const groupData = await createGroup(newGroupName, startDate, endDate, currentUser);
       setGroups((prev) => [...prev, groupData]);
-      resetForm();
+      setNewGroupName("");
+      setStartDate("");
+      setEndDate("");
     } catch (err) {
       console.error("Group creation error:", err);
       setDateError("Something went wrong. Try again.");
